@@ -1,0 +1,46 @@
+gh Level Achieve
+
+
+                                    
+                                                                                  +----------+
+                                                                                  | IP Cache |
+                                                                                  +----------+       
+                                                                                    |     A
+                                                              2, there is cached IP |     | 5, restore best replic 
+                                                                (when not 1st time) |     |      to IP cache
+                                                                                    V     | 
+                                            +--------+                      	  +----------+                    
+                                            |        |   1, user queries    	  |          | 
+                                            |        |--------------------------->|   DNS    |
+                                            | Client |                		  | Resolver |                    
+                                            |        |<---------------------------|          |
+                                            |        |   2.1, reply Geo better 	  |          |     
+                                            +--------+       (when 1st time)  	  +----------+                  
+                                              |   A                                  |     A                     
+                                              |   | 3.2, ping client           	     |     | 
+                                3.1, Ask page |   |  			  	     |     |                
+                                              |   | 6.1, reply the page              |     |
+                                              V   |                           	     |     |
+        +--------+  4.1, replica ask page   +--------+ 2.2, Let replicas ping client |     |
+        |        |<-------------------------|        |<------------------------------|	   |	
+        | Origin |   			    |  HTTP  |                                     |
+        |        |  5, replica get page     | Servers|-------------------------------------|
+        |        |------------------------->|        | 4.2, relicas reply rtt to DNS server
+        +--------+  			    +--------+
+                                              |    A
+                          6, restore the page |    | 4.3, get page when there 
+                                              |    |      is one in cache
+                                              V    | 
+                                           +----------+
+                                           |Page Cache|  
+                                           +----------+  
+
+                                            
+                                            
+Challenges:
+1, it is a huge program, decide the system struture is hard.
+2, use ping, cache, geo location for choosing better replica
+3, use LFU, dict and deque to restore page
+4, limit the whole dir less than 10M
+5, Use the class inheritance with parent BaseRequestHandler, UDPServer, BaseHTTPRequestHandler, HTTPServer
+6, realize the packet structure of DNS

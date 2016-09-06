@@ -1,0 +1,73 @@
+#!/bin/bash
+
+USAGE() # some plan of the script, use "-h"
+{
+cat << EOF
+usage: $0 options
+./runCDN -p <port> -o <origin> -n <name> -u <username> -i <keyfile>
+
+REQUIRED:
+-p <port> The port that DNS server will bind to
+-o <origin> The name of the origin server for CDN
+-n <name> The CDN-specific name that server translates to an IP
+-u <username> The account name used for logging in
+-i <keyfile> path to the private key used for logging into nodes
+EOF
+}
+
+#echo $*
+while getopts p:o:n:u:i: args
+do
+	case $args in
+		p)
+			SERVER_PORT=$OPTARG
+			#echo $SERVER_PORT
+			;;
+		o)
+			ORIGIN_SERVER=$OPTARG
+			#echo $ORIGIN_SERVER	
+			;;
+		n)
+			CDN_NAME=$OPTARG
+			#echo $CDN_NAME
+			;;
+		u)
+			USER_NAME=$OPTARG 
+			#echo $USER_NAME
+			;;
+		i)
+			KEY_FILE=$OPTARG
+			#echo $KEY_FILE
+			;;
+		*) # input is wrong
+			USAGE
+			exit 1 # break out
+			;;
+ 	esac
+done
+shift $((OPTIND-1))
+
+replica_hosts=(ec2-54-85-32-37.compute-1.amazonaws.com 
+	ec2-54-193-70-31.us-west-1.compute.amazonaws.com 
+	ec2-52-38-67-246.us-west-2.compute.amazonaws.com 
+	ec2-52-51-20-200.eu-west-1.compute.amazonaws.com
+	ec2-52-29-65-165.eu-central-1.compute.amazonaws.com 
+	ec2-52-196-70-227.ap-northeast-1.compute.amazonaws.com
+	ec2-54-169-117-213.ap-southeast-1.compute.amazonaws.com 
+	ec2-52-63-206-143.ap-southeast-2.compute.amazonaws.com
+	ec2-54-233-185-94.sa-east-1.compute.amazonaws.com)
+
+for REPLICA in "${replica_hosts[@]}"
+do
+	echo "Run replica: " $REPLICA
+	ssh -i $KEY_FILE -n -f $USER_NAME@$REPLICA "sh -c 'cd ~/scripts/; chmod +x ./ping_server.py; nohup ./ping_server.py -p $SERVER_PORT > /dev/null 2>&1 &'"
+    ssh -i $KEY_FILE -n -f $USER_NAME@$REPLICA "sh -c 'cd ~/scripts/; chmod +x ./httpserver; nohup ./httpserver -p $SERVER_PORT -o $ORIGIN_SERVER > /dev/null 2>&1 &'"
+done
+
+DNS_SERVER=cs5700cdnproject.ccs.neu.edu
+echo "Run DNS server: " $DNS_SERVER
+ssh -i $KEY_FILE -n -f $USER_NAME@$DNS_SERVER "sh -c 'cd ~/scripts/; chmod +x ./best_replica.py ./dns_class.py ./dnsserver; nohup ./dnsserver -p $SERVER_PORT -n $CDN_NAME > /dev/null 2>&1 &'"
+
+
+
+

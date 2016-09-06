@@ -1,0 +1,105 @@
+#!/usr/bin/env python3
+
+__version__ = '5.0'
+"""
+DNS server execute on cs5700cdnproject.ccs.neu.edu
+
+ Foreign    |                              Local Host
+            |
++--------+  |                  +----------+                  |  +--------+
+|        |  | 1, user queries  |          | 4, ask http ping |  |        |
+|        |--|----------------->|   DNS    |------------------|->|  HTTP  |
+| Client |  |                  | Resolver |                  |  | Servers|
+|        |<-|------------------|          |<-----------------|--|        |
+|        |  | 6, reply better  |          | 5, return rtt    |  +--------+
++--------+  |                  +----------+                  |
+            |                    |     A                     |
+            | 2, choose 2 addr   |     |  3, response addrs  |
+            |                    V     |                     |
+            |                  +-----------+                 |
+            |                  |addr choose|                 |
+            |                  +-----------+                 |
+"""
+
+import re
+import sys
+from socketserver import BaseRequestHandler, UDPServer
+from dns_class import *
+from best_replica import *
+import time
+
+private_pattern = re.compile(r'(255.255.255.255)|(192\.168(\.(25[0-5]|2[0-5]\d|1\d{2}|\d{1,2})){2})|(172\.(1[6-9]|2\d|3[01])(\.(25[0-5]|2[0-5]\d|1\d{2}|\d{1,2})){2})|((10|127)(\.(25[0-5]|2[0-5]\d|1\d{2}|\d{1,2})){3})')
+replica_ip = '123.123.123.123'
+class DNSUDPHandler(BaseRequestHandler):
+	def handle(self):
+		self.start_time = time.time()
+		[msg, sock] = self.request
+		dns_pkt = dns_msg(msg)
+		dns_pkt.rcv_header()
+		# TODO: may be more than 1 question
+		if dns_pkt.dns_qd > 0:
+			dns_pkt.rcv_question()
+			if dns_pkt.qname != '{}.'.format(CDN_name):
+				print('qname is {}'.format(dns_pkt.qname))
+				print('{}.'.format(CDN_name))
+				return
+		if dns_pkt.rcv_an > 0:
+			for i in range(dns_pkt.rcv_an):
+				dns_pkt.rcv_answer()
+		print('\n[DEBUG] receive')
+		print('Got connection from {}'.format(self.client_address))
+		print('CDN Name: {}'.format(CDN_name))
+		#dns_pkt.debug_dns()
+		# TODO: make the replica_selector
+		self.client_ip = self.client_address[0]
+		if private_pattern.match(self.client_ip):
+			self.client_ip = '129.10.117.186'
+		best = get_best_rpl(dns_port)
+
+		a = dns_pkt.snd_header()
+		b = dns_pkt.snd_qst
+		response_ip = best.data_searcher(self.client_ip)
+		if response_ip:  # NOT 1st time client arrive: send cache
+			c = dns_pkt.snd_answer(ip=response_ip)
+			self.one_dns_pkt = a + b + c
+			sock.sendto(self.one_dns_pkt, self.client_address)
+			print('DNS spend TIME {}'.format(time.time() - self.start_time))
+		else:  # 1st time client arrive: send best geo, then ping
+			response_ip = best.loc_choosor(self.client_ip)
+			c = dns_pkt.snd_answer(ip=response_ip)
+			self.one_dns_pkt = a + b + c
+			sock.sendto(self.one_dns_pkt, self.client_address)
+			print('DNS spend TIME {}'.format(time.time() - self.start_time))
+			best.ping_adder(self.client_ip)
+
+		#dns_pkt.debug_snd()
+
+
+class SimpleDNSServer(UDPServer):
+	def __init__(self, cdn_name, server_address, handler_class=DNSUDPHandler):
+		self.cdn_name = cdn_name
+		UDPServer.__init__(self, server_address, handler_class)
+		return
+
+
+if __name__ == '__main__':
+	if len(sys.argv) != 5:
+		print(sys.argv)
+		print('Usage: {} -p <port> -n <name>'.format(sys.argv[0]))
+		sys.exit()
+	else:
+		if sys.argv[1] == '-p':
+			dns_port = int(sys.argv[2])
+		else:
+			print(sys.argv)
+			print('Usage: {} -p <port> -n <name>'.format(sys.argv[0]))
+			sys.exit()
+		if sys.argv[3] == '-n':
+			CDN_name = sys.argv[4]
+		else:
+			print(sys.argv)
+			print('Usage: {} -p <port> -n <name>'.format(sys.argv[0]))
+			sys.exit()
+	dns_server = SimpleDNSServer(CDN_name, ('', dns_port))
+	dns_server.serve_forever()
+

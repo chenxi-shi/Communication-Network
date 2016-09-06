@@ -1,0 +1,125 @@
+#!/usr/bin/env python
+
+import urllib2
+import time
+from BaseHTTPServer import HTTPServer, BaseHTTPRequestHandler
+import sys
+from collections import deque
+import os
+
+"""
+ec2-54-88-98-7.compute-1.amazonaws.com	Origin server (running Web server on port 8080)
+ec2-54-85-32-37.compute-1.amazonaws.com		N. Virginia
+ec2-54-193-70-31.us-west-1.compute.amazonaws.com	N. California
+ec2-52-38-67-246.us-west-2.compute.amazonaws.com	Oregon
+ec2-52-51-20-200.eu-west-1.compute.amazonaws.com	Ireland
+ec2-52-29-65-165.eu-central-1.compute.amazonaws.com	Frankfurt
+ec2-52-196-70-227.ap-northeast-1.compute.amazonaws.com	Tokyo
+ec2-54-169-117-213.ap-southeast-1.compute.amazonaws.com	Singapore
+ec2-52-63-206-143.ap-southeast-2.compute.amazonaws.com	Sydney
+ec2-54-233-185-94.sa-east-1.compute.amazonaws.com	Sao Paulo
+"""
+"""
+http://ec2-54-88-98-7.compute-1.amazonaws.com:8080
+"""
+
+origin_port = 8080
+protocol = 'http'
+expire_time = 120
+max_size = 8000000
+
+
+# path = '/wiki/Main_Page'
+path_que = deque()
+page_dict = {}
+class MY_HTTPHandler(BaseHTTPRequestHandler):
+	def __init__(self, origin_server, *args):
+		self.origin = origin_server
+		BaseHTTPRequestHandler.__init__(self, *args)
+
+	def do_GET(self):
+
+		def dir_size():
+			cache_size = 0
+			for k, v in page_dict.iteritems():
+				cache_size += sys.getsizeof(v) + sys.getsizeof(k)
+			return cache_size
+
+		if self.path not in path_que:
+			print('!!!!!!THERE is NOT ONE')
+			path_que.appendleft(self.path)
+			page_dict[self.path] = self.request_origin(path=self.path)
+
+			self.current_usage = dir_size()
+			stack_overflow = self.current_usage - max_size
+			if stack_overflow > 0:
+				del_len = 0
+				for i in range(-1, -len(path_que), 1):
+					if del_len > stack_overflow:
+						break
+					del_len += sys.getsizeof(page_dict[path_que[i]]) + sys.getsizeof(path_que[i])
+					del_path = path_que.pop()
+					del page_dict[del_path]
+		else:
+			print('!!!!!!THERE is ONE')
+			path_que.remove(self.path)
+			path_que.appendleft(self.path)
+		self.reply_client(page_dict[self.path])
+
+	def request_origin(self, path):
+		try:
+			self.req = '{}://{}:{}{}'.format(protocol, self.origin, origin_port, path)
+			print('REQUIST is {}'.format(self.req))
+			self.response = urllib2.urlopen(self.req)
+		except urllib2.HTTPError as e:
+			print(e.code, ':', e.reason)
+			return
+		except urllib2.URLError as e:
+			print(e.reason)
+		else:
+			self.end_timestamp = time.time() + expire_time
+			return self.response.read()
+
+	def reply_client(self, the_page):
+		self.send_response(200)
+		self.send_header('Content-type', 'text/plain')
+		self.end_headers()
+		self.wfile.write(the_page)
+
+	def debug_server(self):
+		print('[DEBUG]')
+		print('Space left: {}'.format(MY_HTTPHandler.space_left))
+
+
+def server(my_port):
+	def handler(*args):
+		MY_HTTPHandler(origin_server, *args)
+
+	print('{}: {}'.format(my_port, type(my_port)))
+	httpd = HTTPServer(('', my_port), handler)
+	httpd.serve_forever()
+
+
+if __name__ == '__main__':
+	if len(sys.argv) != 5:
+		print(sys.argv)
+		print('Usage: {} -p <port> -o <origin>'.format(sys.argv[0]))
+		sys.exit()
+	else:
+		if sys.argv[1] == '-p':
+			my_port = int(sys.argv[2])
+		else:
+			print(sys.argv)
+			print('Usage: {} -p <port> -o <origin>'.format(sys.argv[0]))
+			sys.exit()
+		if sys.argv[3] == '-o':
+			origin_server = sys.argv[4]
+		else:
+			print(sys.argv)
+			print('Usage: {} -p <port> -o <origin>'.format(sys.argv[0]))
+			sys.exit()
+	server(my_port)
+
+
+# my_port = 54321
+# ./httpserver -p 54321 -o ec2-54-88-98-7.compute-1.amazonaws.com
