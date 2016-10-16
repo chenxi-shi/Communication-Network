@@ -1,0 +1,6 @@
+#!/bin/bash
+
+while true
+do
+	python -c "import webcrawlerpy; webcrawlerpy.mycrawler('$1', '$2')"
+done
