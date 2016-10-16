@@ -4,7 +4,7 @@ import sys
 import operator
 import subprocess
 
-chenxi = 'cs5700spring2016 HELLO ' + '001714204' + '\n'
+chenxi = 'cs5700spring2016 HELLO ' + 'NU_ID' + '\n'
 print(chenxi)
 def SoCo(serverPort, server, nuid, sslFlag):
 	# Connection Info. It would be change when set Python Function
@@ -68,4 +68,4 @@ def SoCo(serverPort, server, nuid, sslFlag):
 					break
 	s.close()
 
-#SoCo(27993, "cs5700sp16.ccs.neu.edu", "001714204")
+#SoCo(27993, "cs5700sp16.ccs.neu.edu", "...")
