@@ -1,0 +1,65 @@
+#!/bin/bash
+# Argument order = -p port -s ssh [hostname] [NEU ID]
+# "h" has no argument
+# "p" has optional arguments with default value "27993"
+# "s" has no argument, act as sout of a flag
+
+# set an initial value for the flag
+ARG_H=0
+ARG_S=0
+
+# Downside is for reading options, but I don't need to read option
+# Because every options well be auto detect as parameter
+
+
+usage() # some plan of the script, use "-h"
+{
+cat << EOF
+usage: $0 options
+
+OPTIONS:
+<-h> Show help
+<-p port> Server Port, if not input this part, it default as 27993
+<-s> SSH: set SSH flag as 1
+
+REQUIRED:
+[hostname]
+[NEU ID]
+EOF
+}
+
+# extract options and their arguments into variables.
+while true
+do
+	case $1 in # to this line, the $1 is the first thing after "./client "
+		-h) # -h is optional but not compatable with others, so after -h, break out	
+			ARG_H=1
+			usage
+			exit 1 # break out
+			;;
+        -p) # <-p para>  is optional and compatable
+		    SERVERPORT=$2
+			echo "with -p SERVERPORT is $SERVERPORT"
+			#echo "port is $2"
+			shift 2	# shift 2 means: after this line, previous $2+1 (thing after the port) becomes $1	
+			;;
+		-s) # -s is optional and compatable, like flag
+            ARG_S=1
+			#echo "SSL Flag is $ARG_S"
+			# when use ssl the port should be 27994
+			SERVERPORT=${SERVERPORT:=27994}
+			echo "SERVERPORT is $SERVERPORT"
+			shift 1 # shift 1: after this, previous $1+1 (thing after -s) becomes $1
+            ;;
+		*) #now have shift 0 or 2 or 2+1; the * is $1
+			echo "hostname is $1"
+			echo "nuid is $2"
+			#echo "port is $SERVERPORT"
+			echo "import PySock; PySock.SoCo(${SERVERPORT:-27993}, '$1', '$2', $ARG_S)"
+			python -c "import PySock; PySock.SoCo(${SERVERPORT:-27993}, '$1', '$2', $ARG_S)"
+			# ${SERVERPORT:-27993} means, if there is SERVERPORT, give SERVERPORT, no SERVERPORT give 27993
+			exit 1 # break out
+			;;
+	esac
+done
+
