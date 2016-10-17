@@ -285,7 +285,7 @@ def mycrawler(username, password):
         s.sockSend(msg = msg)
         # !!important info: Server will send whole msg,
         #     but it doesn't mean that socket.recv can get every thing onetime
-        #     so, just let socket.recv receive more then one time
+        #     so, just let socket.recv receive several times
         
         myrecv = s.sockRecv(msg=msg) # return recv, no trynum
         #print(myrecv)
@@ -356,5 +356,5 @@ def mycrawler(username, password):
             print(secret_flag)
 
 
-mycrawler('001714204', 'GYSNIKX6')
+mycrawler('...', 'GYSNIKX6')
 print("--- {0} seconds ---".format(time.time() - start_time))
