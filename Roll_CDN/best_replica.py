@@ -58,7 +58,7 @@ class socket_replica:
 
 	def send_client_ip(self, a_client_ip):
 		# self.a_client_ip = socket.inet_aton(a_client_ip)
-		self.a_client_ip = a_client_ip.encode()
+		self.a_client_ip = a_client_ip.encode()  # to byte utf-8
 		try:
 			self.sock.sendall(self.a_client_ip)
 		except socket.error as e:
@@ -92,7 +92,7 @@ class socket_replica:
 		return self.RTT
 
 
-class get_best_rpl():
+class get_best_rpl:
 	def __init__(self, ping_port):
 		self.sock_dict = {}
 		self.ping_port = ping_port + 1
