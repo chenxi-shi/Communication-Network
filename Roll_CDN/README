@@ -38,9 +38,9 @@ gh Level Achieve
                                             
                                             
 Challenges:
-1, it is a huge program, decide the system struture is hard.
-2, use ping, cache, geo location for choosing better replica
-3, use LFU, dict and deque to restore page
-4, limit the whole dir less than 10M
-5, Use the class inheritance with parent BaseRequestHandler, UDPServer, BaseHTTPRequestHandler, HTTPServer
-6, realize the packet structure of DNS
+1, decide the system struture is hard, because so many parts need to be considered.
+2, use ping, cache, geo location to choose a better replica
+3, use LFU, dict and deque to restore a page
+4, limit restored pages less than 10M in memary 
+5, Use the class inheritance with parent classes BaseRequestHandler, UDPServer, BaseHTTPRequestHandler, HTTPServer
+6, program functions to create packet structure of DNS protocol
